@@ -4,6 +4,7 @@ import connection from "../../database/database.js"
 
 async function cleanDatabase () {
     await connection.query('DELETE FROM users');
+    await connection.query('DELETE FROM sessions');
 }
 
 beforeAll(cleanDatabase);
@@ -50,5 +51,29 @@ describe('POST /sign-up', () => {
         const result = await supertest(app).post('/sign-up').send(body);
 
         expect(result.status).toEqual(409)
+    });
+})
+
+describe('POST /sign-in', () => {
+    it('return status 201 for valid params', async () => {
+        const body = {
+            email: "teste@teste.com", 
+            password:"123456", 
+        }
+
+        const result = await supertest(app).post('/sign-in').send(body);
+
+        expect(result.status).toEqual(200)
+    });
+
+    it('return status 401 for invalid params', async () => {
+        const body = {
+            email: "teste", 
+            password:"123456", 
+        }
+
+        const result = await supertest(app).post('/sign-in').send(body);
+
+        expect(result.status).toEqual(401)
     });
 })

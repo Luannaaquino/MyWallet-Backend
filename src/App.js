@@ -42,36 +42,23 @@ app.post('/sign-up', async (req,res) => {
     
 //rota Login
 app.post('/sign-in', async (req,res) => {
-    const { email, password } = req.body;
-  
-    const signInSchema = Joi.object({
-        email: Joi.string().email().required(),
-        password: Joi.string().min(3).max(20).required(),
-    });
-
-    const validation = signInSchema.validate(req.body);
-    if(validation.error){
-        return res.sendStatus(422)
-    }
-
-    const checkEmail = await connection.query(`
-    SELECT * FROM users 
-    WHERE email = $1`,[email]);
-    if(checkEmail.rows.length !==0){
-        return res.sendStatus(401)
-    }
-    
-    if (!bcrypt.compareSync(password, checkEmail.password)){
-        return res.sendStatus(401)
-    }
-
-    const token = uuidv4();
-    await connection.query(`INSERT INTO sessions ("userId", token) VALUES ($1,$2)`, [checkEmail.id, token]);
-
-    const returnUser = { id: checkEmail.id, name: checkEmail.name, email: checkEmail.email, token}
-
-    res.sendStatus(returnUser)
-    
+     try {
+        const { email, password } = req.body;
+        const userQuery = await connection.query(`SELECT * FROM users WHERE email = $1`, [email]);
+        const user = userQuery.rows[0];
+        if (user && bcrypt.compareSync(password, user.password))  {
+            const token = uuidv4();
+            await connection.query(`
+                INSERT INTO sessions ("userId", token) VALUES ($1,$2)
+                `, [user.id, token]);
+            res.send({ name: user.name, token });
+        } else {
+            return res.sendStatus(401);
+        }
+    } catch(err) {
+        console.log(err);
+        res.sendStatus(500);
+    } 
 });
 app.listen(4000, () => {
     console.log('Server running on port 4000')
