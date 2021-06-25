@@ -4,17 +4,7 @@ import Joi from "joi";
 import pg from 'pg';
 import bcrypt from 'bcrypt'; //segurança de senha
 import { v4 as uuidv4 } from 'uuid'; //gerar token
-
-const databaseConfig = {
-    user: 'postgres',
-    password: '123456',
-    database: 'mywallet',
-    host: 'localhost',
-    port: 5432
-};
-
-const { Pool } = pg;
-const connection = new Pool(databaseConfig);
+import connection from "../database/database.js"
 
 const app = express();
 app.use(cors());
@@ -83,7 +73,8 @@ app.post('/sign-in', async (req,res) => {
     res.sendStatus(returnUser)
     
 });
-
 app.listen(4000, () => {
     console.log('Server running on port 4000')
 });
+
+export default app;
