@@ -60,6 +60,117 @@ app.post('/sign-in', async (req,res) => {
         res.sendStatus(500);
     } 
 });
+
+//nova transição
+app.post("/newtransaction", async (req, res) => {
+    try {
+        const authorization = req.headers['authorization'];
+        const token = authorization?.replace('Bearer ', '');               
+       
+        const user = await connection.query(`
+        SELECT * FROM sessions
+        JOIN users
+        ON sessions."userId" = users.id
+        WHERE sessions.token = $1
+        `, [token]);
+
+        if(!token) return res.sendStatus(401); 
+        
+
+        const { value, description, type } = req.body;  
+        const date = dayjs(); 
+
+        const acceptedTypes = ['entry', 'output'];
+        
+        const transactionSchema = Joi.object({
+            value: Joi.string().required(),
+            description: Joi.string().required(),
+            type: Joi.string().valid(...acceptedTypes).required()
+        });
+    
+        const validation = transactionSchema.validate(req.body);
+
+        if (!validation.error) {   
+        
+            if(user.rows[0]) {
+                const result = await connection.query(`
+                INSERT INTO transactions ("idUser", date, description, value)
+                VALUES ($1, $2, $3, $4, $5)
+                `, [user.rows[0].userId, date, description, value, type])
+
+                res.sendStatus(201);
+
+            } else {
+                res.sendStatus(401);
+            }
+        } else {
+            res.sendStatus(400);
+        }
+
+    } catch(e) {
+        console.log(e);
+        res.sendStatus(500);
+    }
+});
+
+//get transição
+app.get("/transactions", async (req, res) => {
+    try {
+        const authorization = req.headers['authorization'];
+        const token = authorization?.replace('Bearer ', '');               
+       
+        const user = await connection.query(`
+        SELECT * FROM sessions
+        JOIN users
+        ON sessions."userId" = users.id
+        WHERE sessions.token = $1
+        `, [token]);
+
+        if(!token) return res.sendStatus(401);       
+            
+        console.log(user.rows[0])
+
+        if(user.rows[0]) {
+            const result = await connection.query(`
+            SELECT * FROM transactions WHERE "idUser" = $1
+            `, [user.rows[0].userId])
+
+            res.send({
+                transactions: result.rows,
+                userName: user.rows[0].name                
+            });
+            
+        } else {
+            res.sendStatus(401);
+        }
+
+    } catch(e) {
+        console.log(e);
+        res.sendStatus(500);
+    }
+});
+
+//logout
+app.post("/logout", async (req, res) => {
+    try {
+        const authorization = req.headers['authorization'];
+        const token = authorization?.replace('Bearer ', '');               
+       
+        if(!token) return res.sendStatus(401); 
+
+        await connection.query(`
+        DELETE FROM sessions
+        WHERE token = $1
+        `, [token]); 
+        
+        res.sendStatus(200);
+
+    } catch(e) {
+        console.log(e);
+        res.sendStatus(500);
+    } 
+});
+
 app.listen(4000, () => {
     console.log('Server running on port 4000')
 });
